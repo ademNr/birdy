@@ -39,7 +39,7 @@ export default function GeneratePage() {
   const [studyMaterial, setStudyMaterial] = useState<any>(null);
   const [materials, setMaterials] = useState<any[]>([]);
   const [materialTitle, setMaterialTitle] = useState<string>('');
-  const [outputLanguage, setOutputLanguage] = useState<'english' | 'french'>('english');
+  const [outputLanguage, setOutputLanguage] = useState<'english' | 'french' | 'arabic'>('english');
   const [processingProgress, setProcessingProgress] = useState('');
 
   useEffect(() => {
@@ -273,11 +273,11 @@ export default function GeneratePage() {
                     <label className="block text-xs font-semibold text-gray-900 mb-1.5">
                       {t('generate.outputLanguage')}
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => setOutputLanguage('english')}
-                        className={`flex-1 px-3 py-2 text-sm rounded-md border transition-all font-semibold ${
+                        className={`flex-1 min-w-[100px] px-3 py-2 text-sm rounded-md border transition-all font-semibold ${
                           outputLanguage === 'english'
                             ? 'border-gray-900 bg-gray-100 text-gray-900'
                             : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
@@ -288,13 +288,24 @@ export default function GeneratePage() {
                       <button
                         type="button"
                         onClick={() => setOutputLanguage('french')}
-                        className={`flex-1 px-3 py-2 text-sm rounded-md border transition-all font-semibold ${
+                        className={`flex-1 min-w-[100px] px-3 py-2 text-sm rounded-md border transition-all font-semibold ${
                           outputLanguage === 'french'
                             ? 'border-gray-900 bg-gray-100 text-gray-900'
                             : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                         }`}
                       >
                         🇫🇷 French
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOutputLanguage('arabic')}
+                        className={`flex-1 min-w-[100px] px-3 py-2 text-sm rounded-md border transition-all font-semibold ${
+                          outputLanguage === 'arabic'
+                            ? 'border-gray-900 bg-gray-100 text-gray-900'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        🇸🇦 العربية
                       </button>
                     </div>
                     <p className="text-xs text-gray-600 mt-1">

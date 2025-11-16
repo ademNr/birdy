@@ -67,10 +67,10 @@ export default function SettingsPage() {
                 <h2 className="text-base font-bold text-gray-900 mb-2">{t('settings.language')}</h2>
                 <p className="text-sm text-gray-600 mb-4">{t('settings.selectLanguage')}</p>
                 
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   <button
                     onClick={() => setLanguage('en')}
-                    className={`flex-1 px-4 py-3 rounded-md border-2 transition-all font-semibold ${
+                    className={`flex-1 min-w-[140px] px-4 py-3 rounded-md border-2 transition-all font-semibold ${
                       language === 'en'
                         ? 'border-gray-900 bg-gray-100 text-gray-900'
                         : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
@@ -84,7 +84,7 @@ export default function SettingsPage() {
                   
                   <button
                     onClick={() => setLanguage('fr')}
-                    className={`flex-1 px-4 py-3 rounded-md border-2 transition-all font-semibold ${
+                    className={`flex-1 min-w-[140px] px-4 py-3 rounded-md border-2 transition-all font-semibold ${
                       language === 'fr'
                         ? 'border-gray-900 bg-gray-100 text-gray-900'
                         : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
@@ -93,6 +93,20 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-xl">🇫🇷</span>
                       <span>Français</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setLanguage('ar')}
+                    className={`flex-1 min-w-[140px] px-4 py-3 rounded-md border-2 transition-all font-semibold ${
+                      language === 'ar'
+                        ? 'border-gray-900 bg-gray-100 text-gray-900'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-xl">🇸🇦</span>
+                      <span>العربية</span>
                     </div>
                   </button>
                 </div>

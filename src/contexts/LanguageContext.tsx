@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-type Language = 'en' | 'fr';
+type Language = 'en' | 'fr' | 'ar';
 
 interface LanguageContextType {
   language: Language;
@@ -388,6 +388,193 @@ const translations: Record<Language, Record<string, string>> = {
     'error.unauthorized': 'Non autorisé',
     'error.notFound': 'Non trouvé',
   },
+  ar: {
+    // Navigation
+    'nav.dashboard': 'لوحة التحكم',
+    'nav.materials': 'موادي',
+    'nav.notifications': 'الإشعارات',
+    'nav.generate': 'إنشاء جديد',
+    'nav.settings': 'الإعدادات',
+
+    // Common
+    'common.loading': 'جاري التحميل...',
+    'common.cancel': 'إلغاء',
+    'common.save': 'حفظ',
+    'common.delete': 'حذف',
+    'common.edit': 'تعديل',
+    'common.share': 'مشاركة',
+    'common.close': 'إغلاق',
+    'common.logout': 'تسجيل الخروج',
+
+    // Materials
+    'materials.title': 'موادي',
+    'materials.noMaterials': 'لا توجد مواد بعد',
+    'materials.startGenerating': 'ابدأ بإنشاء مادة الدراسة الأولى',
+    'materials.generateNew': 'إنشاء مادة جديدة',
+    'materials.selectMaterial': 'اختر مادة',
+    'materials.chooseFromList': 'اختر مادة من القائمة لعرض محتواها',
+    'materials.sharedWithYou': 'مشاركة معك',
+
+    // Generate
+    'generate.title': 'إنشاء مادة جديدة',
+    'generate.upload': 'رفع مواد الدراسة',
+    'generate.uploadedFiles': 'الملفات المرفوعة',
+    'generate.processingOptions': 'خيارات المعالجة',
+    'generate.materialTitle': 'عنوان المادة',
+    'generate.titlePlaceholder': 'أدخل عنواناً أو اتركه فارغاً للكشف التلقائي',
+    'generate.titleHint': 'سيقترح الذكاء الاصطناعي عنواناً بناءً على ملفاتك إذا تركتها فارغة',
+    'generate.outputLanguage': 'لغة الإخراج',
+    'generate.languageHint': 'سيولد الذكاء الاصطناعي الملخصات والأسئلة والتفسيرات باللغة المختارة',
+    'generate.features': 'الميزات المطلوب إنشاؤها',
+    'generate.featuresHint': 'يتم إنشاء جميع الميزات تلقائياً. يمكنك تخصيص صعوبة خطة الدراسة أدناه.',
+    'generate.studyPlanDifficulty': 'صعوبة خطة الدراسة',
+    'generate.difficulty.easy': 'سهل',
+    'generate.difficulty.medium': 'متوسط',
+    'generate.difficulty.hard': 'صعب',
+    'generate.process': 'إنشاء مادة الدراسة',
+
+    // Notifications
+    'notifications.title': 'الإشعارات',
+    'notifications.noNotifications': 'لا توجد إشعارات',
+    'notifications.emptyMessage': 'سترى الإشعارات هنا عندما يشارك شخص ما مواد معك',
+    'notifications.markAllRead': 'تحديد الكل كمقروء',
+    'notifications.markAsRead': 'تحديد كمقروء',
+    'notifications.sharedBy': 'مشارك من قبل',
+    'notifications.material': 'المادة',
+
+    // Settings
+    'settings.title': 'الإعدادات',
+    'settings.language': 'اللغة',
+    'settings.selectLanguage': 'اختر لغتك المفضلة',
+
+    // Share Modal
+    'share.title': 'مشاركة المادة',
+    'share.description': 'شارك "{title}" مع الأصدقاء أو الزملاء',
+    'share.selectedUsers': 'المستخدمون المحددون',
+    'share.searchUsers': 'البحث عن المستخدمين بالبريد الإلكتروني',
+    'share.searchPlaceholder': 'اكتب البريد الإلكتروني للبحث...',
+    'share.noUsersFound': 'لم يتم العثور على مستخدمين يطابقون "{query}"',
+    'share.shareWith': 'مشاركة مع {count} مستخدم',
+    'share.sharing': 'جاري المشاركة...',
+
+    // Study Material View
+    'material.summary': 'الملخص',
+    'material.keyPoints': 'النقاط الرئيسية',
+    'material.formulas': 'الصيغ',
+    'material.questions': 'الأسئلة',
+    'material.mcqs': 'الأسئلة متعددة الخيارات',
+    'material.flashcards': 'البطاقات التعليمية',
+    'material.studyPlan': 'خطة الدراسة',
+    'material.videos': 'الفيديوهات',
+    'material.chapters': 'الفصول',
+    'material.chapter': 'الفصل',
+    'material.showAnswer': 'إظهار الإجابة',
+    'material.hideAnswer': 'إخفاء الإجابة',
+    'material.noFormulas': 'لا توجد صيغ في هذا الفصل.',
+    'material.flip': 'قلب',
+    'material.next': 'التالي',
+    'material.previous': 'السابق',
+    'material.day': 'يوم',
+    'material.remove': 'إزالة',
+    'material.editTitle': 'تعديل العنوان',
+    'material.deleteTitle': 'حذف المادة',
+    'material.confirmDelete': 'هل أنت متأكد من حذف هذه المادة؟ لا يمكن التراجع عن هذا الإجراء.',
+    'material.deleting': 'جاري الحذف...',
+    'material.processing': 'جاري المعالجة',
+    'material.extracted': 'مستخرج',
+    'material.characters': 'حرف',
+    'material.readingAnalyzing': 'قراءة وتحليل محتوى المستند. سيتم معالجته بواسطة الذكاء الاصطناعي قريباً...',
+    'material.extractingFrom': 'استخراج النص من',
+
+    // File Upload
+    'upload.dropFiles': 'أسقط الملفات هنا...',
+    'upload.dragDrop': 'اسحب وأفلت الملفات هنا، أو انقر للتصفح',
+    'upload.fileTypes': 'PDF، Word، PowerPoint، ملفات نصية • الحد الأقصى 50 ميجابايت لكل ملف',
+    'upload.selectedFiles': 'الملفات المحددة',
+    'upload.clearAll': 'مسح الكل',
+    'upload.uploading': 'جاري الرفع...',
+    'upload.uploadFiles': 'رفع {count} ملف',
+    'upload.selectFile': 'يرجى تحديد ملف واحد على الأقل',
+    'upload.failed': 'فشل الرفع',
+
+    // Dashboard
+    'dashboard.title': 'لوحة التحكم',
+    'dashboard.welcome': 'مرحباً بعودتك! 👋',
+    'dashboard.ready': 'هل أنت مستعد لإنشاء مادة الدراسة التالية؟ ارفع ملفاتك ودع الذكاء الاصطناعي يقوم بالعمل.',
+    'dashboard.generateNew': 'إنشاء مادة جديدة',
+    'dashboard.uploadProcess': 'رفع ومعالجة الملفات',
+    'dashboard.uploadDescription': 'ارفع ملفات PDF أو مستندات Word أو ملفات PowerPoint وأنشئ ملخصات وأسئلة وبطاقات تعليمية والمزيد.',
+    'dashboard.myMaterials': 'موادي',
+    'dashboard.savedMaterials': '{count} مادة محفوظة',
+    'dashboard.viewManage': 'عرض وإدارة جميع مواد الدراسة المعالجة والبطاقات التعليمية وخطط الدراسة.',
+    'dashboard.totalMaterials': 'إجمالي المواد',
+    'dashboard.processed': 'معالج',
+    'dashboard.flashcards': 'البطاقات التعليمية',
+    'dashboard.recentMaterials': 'المواد الأخيرة',
+    'dashboard.viewAll': 'عرض الكل →',
+
+    // Materials
+    'materials.newMaterial': '+ مادة جديدة',
+    'materials.showList': 'إظهار قائمة المواد',
+    'materials.hideList': 'إخفاء القائمة',
+    'materials.materials': 'المواد',
+    'materials.search': 'البحث عن المواد...',
+    'materials.clickArrow': 'انقر على زر السهم لإظهار قائمة المواد',
+
+    // Generate
+    'generate.processing': 'معالجة موادك',
+    'generate.extracting': 'استخراج المحتوى من الملفات...',
+    'generate.processingFile': 'معالجة الملف:',
+    'generate.contentFrom': 'المحتوى من:',
+    'generate.readingAnalyzing': 'قراءة وتحليل محتوى المستند. سيتم معالجته بواسطة الذكاء الاصطناعي قريباً...',
+    'generate.extractingFrom': 'استخراج النص من',
+    'generate.fileTypes': 'PDF، Word، PowerPoint',
+    'generate.remove': 'إزالة',
+    'generate.featureSummary': '✓ 📄 الملخص',
+    'generate.featureKeyPoints': '✓ 🔑 النقاط الرئيسية',
+    'generate.featureFormulas': '✓ 🔢 الصيغ',
+    'generate.featureQuestions': '✓ ❓ الأسئلة',
+    'generate.featureMCQs': '✓ 📝 الأسئلة متعددة الخيارات',
+    'generate.featureFlashcards': '✓ 🎴 البطاقات التعليمية',
+    'generate.featureStudyPlan': '✓ 📅 خطة الدراسة',
+
+    // Processing Loader
+    'processing.title': 'إنشاء مادة الدراسة...',
+    'processing.readingFiles': 'قراءة الملفات',
+    'processing.extractingText': 'استخراج المحتوى النصي',
+    'processing.analyzingStructure': 'تحليل بنية المستند',
+    'processing.processingAI': 'المعالجة بالذكاء الاصطناعي',
+    'processing.generatingSummaries': 'إنشاء الملخصات',
+    'processing.creatingKeyPoints': 'إنشاء النقاط الرئيسية',
+    'processing.extractingFormulas': 'استخراج الصيغ',
+    'processing.generatingQuestions': 'إنشاء الأسئلة',
+    'processing.creatingMCQs': 'إنشاء الأسئلة متعددة الخيارات',
+    'processing.buildingFlashcards': 'بناء البطاقات التعليمية',
+    'processing.creatingStudyPlan': 'إنشاء خطة الدراسة',
+    'processing.finalizing': 'الإنهاء',
+    'processing.currentStatus': 'الحالة الحالية:',
+    'processing.extractedPreview': 'معاينة النص المستخرج:',
+
+    // Share Modal
+    'share.enterEmail': 'يرجى إدخال عنوان بريد إلكتروني',
+    'share.validEmail': 'يرجى إدخال عنوان بريد إلكتروني صحيح',
+    'share.selectUser': 'يرجى تحديد مستخدم واحد على الأقل للمشاركة معه',
+    'share.success': 'تم مشاركة المادة بنجاح!',
+    'share.failed': 'فشلت مشاركة المادة',
+    'share.alreadyShared': 'المادة مشاركة بالفعل مع هذا المستخدم',
+    'share.userNotFound': 'لم يتم العثور على مستخدم بهذا البريد الإلكتروني. تأكد من أن المستخدم لديه حساب.',
+    'share.cannotShareSelf': 'لا يمكنك مشاركة مادة مع نفسك',
+
+    // Notifications
+    'notifications.clickToView': 'انقر لعرض المادة',
+
+    // Errors
+    'error.uploadFailed': 'فشل الرفع',
+    'error.processingFailed': 'فشلت المعالجة',
+    'error.unknown': 'حدث خطأ غير معروف',
+    'error.unauthorized': 'غير مصرح',
+    'error.notFound': 'غير موجود',
+  },
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -401,7 +588,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setIsClient(true);
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('appLanguage');
-      if (saved === 'fr' || saved === 'en') {
+      if (saved === 'fr' || saved === 'en' || saved === 'ar') {
         setLanguageState(saved);
       }
     }

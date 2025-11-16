@@ -70,7 +70,7 @@ export async function processStudyMaterial(
     flashcards?: boolean;
     studyPlan?: { examDate?: string; difficulty?: string };
   },
-  outputLanguage: 'english' | 'french' = 'english'
+  outputLanguage: 'english' | 'french' | 'arabic' = 'english'
 ): Promise<AIResponse> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY is not configured. Please set it in your .env.local file.');
@@ -141,9 +141,9 @@ export async function processStudyMaterial(
   }
 }
 
-function buildPrompt(text: string, features: any, outputLanguage: 'english' | 'french' = 'english'): string {
+function buildPrompt(text: string, features: any, outputLanguage: 'english' | 'french' | 'arabic' = 'english'): string {
   // Use the selected output language
-  const language = outputLanguage === 'french' ? 'French' : 'English';
+  const language = outputLanguage === 'french' ? 'French' : outputLanguage === 'arabic' ? 'Arabic' : 'English';
   
   let prompt = `You are an AI Study Assistant for Tunisian students. Analyze the following study material THOROUGHLY and provide a comprehensive, DETAILED JSON response.
 
@@ -340,8 +340,8 @@ Return ONLY valid JSON array.`;
   }
 }
 
-export async function extractChapterTitle(text: string, fileName: string, outputLanguage: 'english' | 'french' = 'english'): Promise<string> {
-  const language = outputLanguage === 'french' ? 'French' : 'English';
+export async function extractChapterTitle(text: string, fileName: string, outputLanguage: 'english' | 'french' | 'arabic' = 'english'): Promise<string> {
+  const language = outputLanguage === 'french' ? 'French' : outputLanguage === 'arabic' ? 'Arabic' : 'English';
   const textPreview = text.substring(0, 3000);
   
   const prompt = `Extract the chapter title from this study material. Look for:
