@@ -214,7 +214,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         ...s,
                         date: new Date(s.date),
                     })) || [],
-                    examDate: overallResponse.studyPlan.examDate ? new Date(overallResponse.studyPlan.examDate) : undefined,
                 } : undefined,
                 outputLanguage: selectedLanguage,
                 chapters: chapters,
