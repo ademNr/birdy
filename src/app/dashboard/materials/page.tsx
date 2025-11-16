@@ -59,17 +59,16 @@ export default function MaterialsPage() {
       const data = JSON.parse(text);
       const materials = data.materials || [];
       setMaterials(materials);
-        // Set selected material from URL if present
-        const urlParams = new URLSearchParams(window.location.search);
-        const materialId = urlParams.get('materialId');
-        if (materialId) {
-          const material = materials.find((m: any) => m.id === materialId);
-          if (material) {
-            setSelectedMaterial(material);
-            // Hide list on mobile after selection
-            if (window.innerWidth < 768) {
-              setShowMaterialsList(false);
-            }
+      // Set selected material from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      const materialId = urlParams.get('materialId');
+      if (materialId) {
+        const material = materials.find((m: any) => m.id === materialId);
+        if (material) {
+          setSelectedMaterial(material);
+          // Hide list on mobile after selection
+          if (window.innerWidth < 768) {
+            setShowMaterialsList(false);
           }
         }
       }
