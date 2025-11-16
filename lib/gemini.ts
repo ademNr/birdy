@@ -54,8 +54,8 @@ export interface AIResponse {
   youtubeVideos?: Array<{
     title: string;
     description: string;
-    searchQuery: string;
-    relevance: string;
+    searchQuery: string; // YouTube search query to find the video
+    relevance: string; // Why this video is relevant
   }>;
   studyPlan?: {
     schedule: Array<{

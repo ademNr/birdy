@@ -139,10 +139,12 @@ export default function GeneratePage() {
               errorMessage = `Server error: ${response.status} ${response.statusText}. This might be a timeout - processing may take a while.`;
             }
             
-            console.error('Processing error:', {
+            console.error('Processing error (response not ok):', {
               message: errorMessage,
               status: response.status,
               statusText: response.statusText,
+              url: response.url,
+              headers: Object.fromEntries(response.headers.entries()),
             });
             alert(`Error: ${errorMessage}`);
             setProcessing(false);
@@ -184,13 +186,28 @@ export default function GeneratePage() {
           }, 1000);
         })
         .catch((error) => {
-          console.error('Processing error:', error);
-          const errorMessage = error.message || error.toString() || 'Network error. Please check your connection and try again.';
+          console.error('Processing error (catch block):', error);
+          
+          // Extract error message more robustly
+          let errorMessage = 'Network error. Please check your connection and try again.';
+          
+          if (error instanceof Error) {
+            errorMessage = error.message || errorMessage;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          } else if (error && typeof error === 'object') {
+            errorMessage = (error as any).message || (error as any).error || JSON.stringify(error);
+          }
+          
           console.error('Full error details:', {
             message: errorMessage,
             error: error,
-            stack: error.stack
+            errorType: typeof error,
+            errorConstructor: error?.constructor?.name,
+            stack: error instanceof Error ? error.stack : 'No stack trace available',
+            stringified: JSON.stringify(error, Object.getOwnPropertyNames(error))
           });
+          
           alert(`Error: ${errorMessage}`);
           setProcessing(false);
           setProcessingProgress('');
