@@ -590,11 +590,6 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
             {activeTab === 'studyPlan' && currentContent.studyPlan && (
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-4">Study Plan</h3>
-                {currentContent.studyPlan.examDate && (
-                  <p className="text-sm text-gray-800 mb-4 font-semibold">
-                    Exam Date: {new Date(currentContent.studyPlan.examDate).toLocaleDateString()}
-                  </p>
-                )}
                 <div className="space-y-3">
                   {currentContent.studyPlan.schedule.map((day: any, index: number) => (
                     <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white">
