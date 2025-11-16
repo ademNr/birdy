@@ -57,11 +57,23 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
         body: formData,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || t('upload.failed'));
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch {
+          errorData = { error: response.statusText || t('upload.failed') };
+        }
+        throw new Error(errorData.error || t('upload.failed'));
       }
+
+      const text = await response.text();
+      if (!text) {
+        throw new Error(t('upload.failed'));
+      }
+
+      const data = JSON.parse(text);
 
       setUploadedFiles(data.documents.length);
       onUploadComplete(data.documents);

@@ -32,12 +32,21 @@ export default function DashboardPage() {
     setIsLoading(true);
     try {
       const response = await fetch('/api/materials');
-      const data = await response.json();
-      if (response.ok) {
-        setMaterials(data.materials);
-        // Get recent 3 materials
-        setRecentMaterials(data.materials.slice(0, 3));
+      if (!response.ok) {
+        console.error('Error fetching materials:', response.statusText);
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        console.error('Error fetching materials: Empty response');
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setMaterials(data.materials || []);
+      // Get recent 3 materials
+      setRecentMaterials((data.materials || []).slice(0, 3));
     } catch (error) {
       console.error('Error fetching materials:', error);
     } finally {

@@ -57,10 +57,19 @@ export default function GeneratePage() {
   const fetchMaterials = async () => {
     try {
       const response = await fetch('/api/materials');
-      const data = await response.json();
-      if (response.ok) {
-        setMaterials(data.materials);
+      if (!response.ok) {
+        console.error('Error fetching materials:', response.statusText);
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        console.error('Error fetching materials: Empty response');
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setMaterials(data.materials || []);
     } catch (error) {
       console.error('Error fetching materials:', error);
     }
@@ -128,16 +137,31 @@ export default function GeneratePage() {
         }),
       })
         .then(async (response) => {
-          const data = await response.json();
-
           if (!response.ok) {
-            const errorMessage = data.error || 'Processing failed';
-            console.error('Processing error:', errorMessage, data);
+            const errorText = await response.text();
+            let errorData;
+            try {
+              errorData = errorText ? JSON.parse(errorText) : {};
+            } catch {
+              errorData = { error: response.statusText || 'Processing failed' };
+            }
+            const errorMessage = errorData.error || 'Processing failed';
+            console.error('Processing error:', errorMessage, errorData);
             alert(`Error: ${errorMessage}`);
             setProcessing(false);
             setProcessingProgress('');
             return;
           }
+
+          const text = await response.text();
+          if (!text) {
+            alert('Error: Empty response from server');
+            setProcessing(false);
+            setProcessingProgress('');
+            return;
+          }
+
+          const data = JSON.parse(text);
 
           setProcessingProgress('Complete!');
           setStudyMaterial(data.studyMaterial);

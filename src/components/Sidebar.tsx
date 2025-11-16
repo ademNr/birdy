@@ -33,10 +33,17 @@ export default function Sidebar({ materialsCount }: SidebarProps) {
   const fetchUnreadCount = async () => {
     try {
       const response = await fetch('/api/notifications');
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.notifications?.filter((n: any) => !n.read).length || 0);
+      if (!response.ok) {
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setUnreadCount(data.notifications?.filter((n: any) => !n.read).length || 0);
     } catch (error) {
       console.error('Error fetching unread count:', error);
     }

@@ -46,10 +46,17 @@ export default function NotificationsPage() {
   const fetchMaterialsCount = async () => {
     try {
       const response = await fetch('/api/materials');
-      if (response.ok) {
-        const data = await response.json();
-        setMaterialsCount(data.materials?.length || 0);
+      if (!response.ok) {
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setMaterialsCount(data.materials?.length || 0);
     } catch (error) {
       console.error('Error fetching materials count:', error);
     }
@@ -59,10 +66,17 @@ export default function NotificationsPage() {
     try {
       setIsLoading(true);
       const response = await fetch('/api/notifications');
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.notifications || []);
+      if (!response.ok) {
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setNotifications(data.notifications || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {

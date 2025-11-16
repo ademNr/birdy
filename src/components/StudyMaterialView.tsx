@@ -104,11 +104,23 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update title');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch {
+          errorData = { error: response.statusText || 'Failed to update title' };
+        }
+        throw new Error(errorData.error || 'Failed to update title');
       }
+
+      const text = await response.text();
+      if (!text) {
+        throw new Error('Empty response from server');
+      }
+
+      const data = JSON.parse(text);
 
       // Update local state
       const updatedMaterial = { ...material, title: editedTitle.trim() };
@@ -150,11 +162,24 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete material');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch {
+          errorData = { error: response.statusText || 'Failed to delete material' };
+        }
+        throw new Error(errorData.error || 'Failed to delete material');
       }
+
+      const text = await response.text();
+      if (!text) {
+        // Delete might return empty response, which is OK
+        return;
+      }
+
+      const data = JSON.parse(text);
 
       router.push('/dashboard/materials');
       router.refresh();
