@@ -41,7 +41,7 @@ export interface IStudyMaterial extends Document {
     userId: mongoose.Types.ObjectId;
     vote: 'up' | 'down';
   }>;
-  outputLanguage?: 'english' | 'french';
+  outputLanguage?: 'english' | 'french' | 'arabic';
   chapters?: Array<{
     order: number;
     title: string;
@@ -214,6 +214,18 @@ const StudyMaterialSchema: Schema = new Schema(
     timestamps: true,
   }
 );
+
+// Force clear the model cache in development to ensure schema updates are applied
+// This is necessary because Mongoose caches models and schema changes won't take effect until cache is cleared
+if (process.env.NODE_ENV === 'development') {
+  if (mongoose.models.StudyMaterial) {
+    delete mongoose.models.StudyMaterial;
+  }
+  // Also delete from mongoose.modelSchemas if it exists
+  if (mongoose.modelSchemas && mongoose.modelSchemas['StudyMaterial']) {
+    delete mongoose.modelSchemas['StudyMaterial'];
+  }
+}
 
 const StudyMaterial: Model<IStudyMaterial> = mongoose.models.StudyMaterial || mongoose.model<IStudyMaterial>('StudyMaterial', StudyMaterialSchema);
 
