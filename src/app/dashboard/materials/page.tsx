@@ -2,13 +2,14 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../../components/Sidebar';
 import StudyMaterialView from '../../../components/StudyMaterialView';
 import ProcessingLoader from '../../../components/ProcessingLoader';
 import { useUpload } from '../../../contexts/UploadContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { MaterialsListShimmer, MaterialCardShimmer } from '../../../components/Shimmer';
+import { useMaterials } from '../../../../lib/hooks/useMaterials';
 import Link from 'next/link';
 
 export default function MaterialsPage() {
@@ -16,13 +17,12 @@ export default function MaterialsPage() {
   const router = useRouter();
   const { uploadState } = useUpload();
   const { t } = useLanguage();
-  const [materials, setMaterials] = useState<any[]>([]);
+  const { materials, isLoading, mutate } = useMaterials();
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMaterialsList, setShowMaterialsList] = useState(true);
   const [processingDocuments, setProcessingDocuments] = useState<Array<{ id: string; originalName: string; fileType: string }>>([]);
   const [processingProgress, setProcessingProgress] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
   // Update processing documents when processing state changes
   useEffect(() => {
@@ -35,43 +35,31 @@ export default function MaterialsPage() {
     }
   }, [status, router]);
 
+  // Set selected material from URL if present
   useEffect(() => {
-    if (session) {
-      fetchMaterials();
-    }
-  }, [session]);
-
-  const fetchMaterials = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/materials');
-      const data = await response.json();
-      if (response.ok) {
-        setMaterials(data.materials);
-        // Set selected material from URL if present
-        const urlParams = new URLSearchParams(window.location.search);
-        const materialId = urlParams.get('materialId');
-        if (materialId) {
-          const material = data.materials.find((m: any) => m.id === materialId);
-          if (material) {
-            setSelectedMaterial(material);
-            // Hide list on mobile after selection
-            if (window.innerWidth < 768) {
-              setShowMaterialsList(false);
-            }
+    if (materials.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const materialId = urlParams.get('materialId');
+      if (materialId) {
+        const material = materials.find((m: any) => m.id === materialId);
+        if (material) {
+          setSelectedMaterial(material);
+          // Hide list on mobile after selection
+          if (window.innerWidth < 768) {
+            setShowMaterialsList(false);
           }
         }
       }
-    } catch (error) {
-      console.error('Error fetching materials:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [materials]);
 
-  const filteredMaterials = materials.filter((material) =>
-    material.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Memoize filtered materials for performance
+  const filteredMaterials = useMemo(() => {
+    if (!searchQuery) return materials;
+    return materials.filter((material: any) =>
+      material.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [materials, searchQuery]);
 
   if (status === 'loading') {
     return (
@@ -169,7 +157,7 @@ export default function MaterialsPage() {
                         {isLoading ? (
                           <MaterialsListShimmer />
                         ) : (
-                          filteredMaterials.map((material) => (
+                          filteredMaterials.map((material: any) => (
                           <button
                             key={material.id}
                             onClick={() => {
@@ -224,10 +212,11 @@ export default function MaterialsPage() {
                       material={selectedMaterial}
                       isOwner={selectedMaterial.isOwner === true}
                       onMaterialUpdate={(updatedMaterial) => {
-                        // Update the material in the list
-                        setMaterials(prev => 
-                          prev.map(m => m.id === updatedMaterial.id ? updatedMaterial : m)
-                        );
+                        // Update the material in the cache
+                        mutate((current: any[]) => {
+                          if (!current) return current;
+                          return current.map(m => m.id === updatedMaterial.id ? updatedMaterial : m);
+                        }, false);
                         setSelectedMaterial(updatedMaterial);
                       }}
                     />

@@ -24,7 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .populate('sharedBy', 'name email')
         .populate('materialId', 'title')
         .sort({ createdAt: -1 })
-        .limit(50);
+        .limit(50)
+        .lean(); // Faster queries
+
+      // Set caching headers
+      res.setHeader('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
 
       return res.status(200).json({
         notifications: notifications.map((notif) => ({

@@ -12,6 +12,7 @@ interface FileUploadProps {
 export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { uploadState, setUploading, setUploadedFiles } = useUpload();
   const { t, language } = useLanguage();
 
@@ -45,6 +46,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
 
     setUploading(true);
     setError('');
+    setUploadProgress(0);
 
     try {
       const formData = new FormData();
@@ -52,24 +54,53 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
         formData.append('files', file);
       });
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      // Use XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest();
+      
+      const response = await new Promise<any>((resolve, reject) => {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            setUploadProgress(Math.round(percentComplete));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve({ ok: true, data });
+            } catch {
+              reject(new Error('Invalid response'));
+            }
+          } else {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              reject(new Error(data.error || 'Upload failed'));
+            } catch {
+              reject(new Error('Upload failed'));
+            }
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error'));
+        });
+
+        xhr.open('POST', '/api/upload');
+        xhr.send(formData);
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || t('upload.failed'));
-      }
-
-      setUploadedFiles(data.documents.length);
-      onUploadComplete(data.documents);
+      setUploadProgress(100);
+      setUploadedFiles(response.data.documents.length);
+      onUploadComplete(response.data.documents);
       setFiles([]);
       setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
     } catch (err: any) {
       setError(err.message || t('upload.failed'));
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -142,6 +173,16 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
               </div>
             ))}
           </div>
+          {/* Upload Progress Bar */}
+          {uploadState.isUploading && uploadProgress > 0 && (
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-gray-900 h-full transition-all duration-300 ease-out rounded-full"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
+          
           <button
             onClick={handleUpload}
             disabled={uploadState.isUploading}

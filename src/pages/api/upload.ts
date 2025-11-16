@@ -3,14 +3,16 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/auth';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs/promises';
 import connectDB from '../../../lib/mongodb';
 import Document from '../../../models/Document';
-import { isFileSupported } from '../../../lib/fileProcessor';
+import { isFileSupported, extractTextFromBuffer } from '../../../lib/fileProcessor';
+import { supabase, STORAGE_BUCKET } from '../../../lib/supabase';
 
-// Configure multer for file upload
+// Configure multer to use memory storage (no disk writes)
+const storage = multer.memoryStorage();
+
 const upload = multer({
-  dest: 'uploads/',
+  storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB
   },
@@ -28,6 +30,7 @@ export const config = {
   api: {
     bodyParser: false,
   },
+  maxDuration: 60, // 60 seconds for Vercel Pro, 10s for Hobby
 };
 
 const runMiddleware = (req: NextApiRequest, res: NextApiResponse, fn: any) => {
@@ -42,6 +45,14 @@ const runMiddleware = (req: NextApiRequest, res: NextApiResponse, fn: any) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -55,15 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectDB();
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    try {
-      await fs.access(uploadsDir);
-    } catch {
-      await fs.mkdir(uploadsDir, { recursive: true });
+    // Check Supabase configuration
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({ 
+        error: 'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment variables.' 
+      });
     }
 
-    // Handle file upload
+    // Handle file upload to memory (no disk writes)
     await runMiddleware(req, res, upload.array('files', 10));
 
     const files = (req as any).files;
@@ -76,20 +86,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const file of files) {
       const fileExtension = path.extname(file.originalname).toLowerCase();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExtension}`;
-      const filePath = path.join(uploadsDir, fileName);
+      const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExtension}`;
+      const supabasePath = `${userId}/${uniqueFileName}`;
 
-      // Move file to permanent location
-      await fs.rename(file.path, filePath);
+      // File buffer is already in memory from multer
+      const fileBuffer = file.buffer;
 
-      // Save document to database
+      // Extract text from buffer before uploading (faster, no disk I/O)
+      let extractedText = '';
+      try {
+        extractedText = await extractTextFromBuffer(fileBuffer, fileExtension, file.originalname);
+        console.log(`Extracted ${extractedText.length} characters from ${file.originalname}`);
+      } catch (error) {
+        console.error(`Error extracting text from ${file.originalname}:`, error);
+        // Continue even if text extraction fails - we can try again later
+      }
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(supabasePath, fileBuffer, {
+          contentType: file.mimetype || 'application/octet-stream',
+          upsert: false, // Don't overwrite existing files
+        });
+
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError);
+        return res.status(500).json({ 
+          error: `Failed to upload file to storage: ${uploadError.message}` 
+        });
+      }
+
+      // Save document to database with Supabase path and extracted text
       const document = await Document.create({
         userId,
-        fileName,
+        fileName: uniqueFileName,
         originalName: file.originalname,
         fileType: fileExtension,
         fileSize: file.size,
-        filePath,
+        filePath: supabasePath, // Store Supabase storage path
+        extractedText, // Store extracted text in database
         processed: false,
       });
 

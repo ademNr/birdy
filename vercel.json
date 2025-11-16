@@ -8,5 +8,13 @@
     ],
     "env": {
         "NODE_ENV": "production"
+    },
+    "functions": {
+        "src/pages/api/process.ts": {
+            "maxDuration": 300
+        },
+        "src/pages/api/upload.ts": {
+            "maxDuration": 60
+        }
     }
 }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import type React from 'react';
 import VoiceExplanation from './VoiceExplanation';
 import ShareModal from './ShareModal';
+import PDFViewer from './PDFViewer';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -73,6 +74,43 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(material.title);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Get PDF documents for current chapter or overall material
+  const getPDFDocuments = () => {
+    const pdfDocs: Array<{ id: string; filePath: string; originalName: string }> = [];
+    
+    if (hasChapters && selectedChapter !== null && chapterData?.chapter) {
+      // Get PDF for current chapter
+      const chapterDocId = chapterData.chapter.documentId;
+      if (chapterDocId && material.documentIds) {
+        const doc = material.documentIds.find((d: any) => d.id === chapterDocId);
+        if (doc && doc.fileType === '.pdf' && doc.filePath) {
+          pdfDocs.push({
+            id: doc.id,
+            filePath: doc.filePath,
+            originalName: doc.originalName,
+          });
+        }
+      }
+    } else {
+      // Get all PDFs for overall material
+      if (material.documentIds) {
+        material.documentIds.forEach((doc: any) => {
+          if (doc.fileType === '.pdf' && doc.filePath) {
+            pdfDocs.push({
+              id: doc.id,
+              filePath: doc.filePath,
+              originalName: doc.originalName,
+            });
+          }
+        });
+      }
+    }
+    
+    return pdfDocs;
+  };
+
+  const pdfDocuments = getPDFDocuments();
 
   // Update edited title when material changes
   useEffect(() => {
@@ -387,6 +425,18 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
                   📺 {t('material.videos')}
                 </button>
               )}
+              {pdfDocuments.length > 0 && (
+                <button
+                  onClick={() => setActiveTab('pdf')}
+                  className={`pb-2 px-2 text-sm font-semibold transition-colors whitespace-nowrap ${
+                    activeTab === 'pdf'
+                      ? 'border-b-2 border-gray-900 text-gray-900'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📄 {t('material.pdf') || 'PDF'}
+                </button>
+              )}
               {currentContent.studyPlan && (
                 <button
                   onClick={() => setActiveTab('studyPlan')}
@@ -504,47 +554,78 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
               </div>
             )}
 
-            {activeTab === 'videos' && currentContent.youtubeVideos && currentContent.youtubeVideos.length > 0 && (
-              <div>
-                <h3 className="text-base font-bold text-gray-900 mb-4">
-                  {chapterData?.chapter ? 'Chapter Revision Videos' : 'Revision Videos'}
-                </h3>
-                <p className="text-xs text-gray-600 mb-4">
-                  Suggested YouTube videos to help you understand and revise the main topics in this chapter.
-                </p>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {currentContent.youtubeVideos.map((video: any, index: number) => (
-                    <div key={index} className="border-2 border-gray-200 rounded-lg p-4 bg-white hover:border-gray-400 hover:shadow-md transition-all">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="w-24 h-16 bg-red-600 rounded-lg flex items-center justify-center shadow-md">
-                            <span className="text-white text-2xl">▶</span>
+            {activeTab === 'videos' && (
+              <div className="space-y-6">
+                {/* YouTube Videos Section */}
+                {currentContent.youtubeVideos && currentContent.youtubeVideos.length > 0 ? (
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 mb-4">
+                      {chapterData?.chapter ? 'Chapter Revision Videos' : 'Revision Videos'}
+                    </h3>
+                    <p className="text-xs text-gray-600 mb-4">
+                      Suggested YouTube videos to help you understand and revise the main topics in this chapter.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {currentContent.youtubeVideos.map((video: any, index: number) => (
+                        <div key={index} className="border-2 border-gray-200 rounded-lg p-4 bg-white hover:border-gray-400 hover:shadow-md transition-all">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              <div className="w-24 h-16 bg-red-600 rounded-lg flex items-center justify-center shadow-md">
+                                <span className="text-white text-2xl">▶</span>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2">
+                                {video.title || 'Video Suggestion'}
+                              </h4>
+                              <p className="text-xs text-gray-700 mb-2 line-clamp-2">
+                                {video.description || 'Educational video for this topic'}
+                              </p>
+                              <p className="text-xs text-gray-600 mb-3">
+                                <span className="font-semibold">Why relevant:</span> {video.relevance || 'Covers key concepts from this chapter'}
+                              </p>
+                              <a
+                                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(video.searchQuery || video.title || '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md transition-colors shadow-sm"
+                              >
+                                <span>🔍</span>
+                                <span>Search on YouTube</span>
+                                <span>↗</span>
+                              </a>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2">
-                            {video.title || 'Video Suggestion'}
-                          </h4>
-                          <p className="text-xs text-gray-700 mb-2 line-clamp-2">
-                            {video.description || 'Educational video for this topic'}
-                          </p>
-                          <p className="text-xs text-gray-600 mb-3">
-                            <span className="font-semibold">Why relevant:</span> {video.relevance || 'Covers key concepts from this chapter'}
-                          </p>
-                          <a
-                            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(video.searchQuery || video.title || '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md transition-colors shadow-sm"
-                          >
-                            <span>🔍</span>
-                            <span>Search on YouTube</span>
-                            <span>↗</span>
-                          </a>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-600">No videos available for this section.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'pdf' && pdfDocuments.length > 0 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 mb-4">
+                    {chapterData?.chapter ? 'Chapter Original Document' : 'Original Documents'}
+                  </h3>
+                  <p className="text-xs text-gray-600 mb-4">
+                    View and scroll through the original PDF document(s) you uploaded.
+                  </p>
+                  <div className="space-y-4">
+                    {pdfDocuments.map((pdfDoc) => (
+                      <PDFViewer
+                        key={pdfDoc.id}
+                        filePath={pdfDoc.filePath}
+                        fileName={pdfDoc.originalName}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

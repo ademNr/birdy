@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useUpload } from '../contexts/UploadContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useNotifications } from '../../lib/hooks/useNotifications';
 
 interface SidebarProps {
   materialsCount: number;
@@ -20,29 +21,11 @@ export default function Sidebar({ materialsCount }: SidebarProps) {
   const { t } = useLanguage();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { uploadState } = useUpload();
-  const [unreadCount, setUnreadCount] = useState(0);
   const { isOpen, toggleSidebar } = useSidebar();
-
-  useEffect(() => {
-    if (session) {
-      fetchUnreadCount();
-      // Refresh unread count every 30 seconds
-      const interval = setInterval(fetchUnreadCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [session]);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const response = await fetch('/api/notifications');
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.notifications?.filter((n: any) => !n.read).length || 0);
-      }
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-    }
-  };
+  const { notifications } = useNotifications();
+  
+  // Calculate unread count from cached notifications
+  const unreadCount = notifications.filter((n: any) => !n.read).length;
 
   const navigationItems = [
     {

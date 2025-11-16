@@ -2,48 +2,29 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { DashboardCardShimmer, StatsShimmer } from '../../components/Shimmer';
+import { useMaterials } from '../../../lib/hooks/useMaterials';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [recentMaterials, setRecentMaterials] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { materials, isLoading } = useMaterials();
   const { t } = useLanguage();
+
+  // Memoize recent materials
+  const recentMaterials = useMemo(() => {
+    return materials.slice(0, 3);
+  }, [materials]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     }
   }, [status, router]);
-
-  useEffect(() => {
-    if (session) {
-      fetchMaterials();
-    }
-  }, [session]);
-
-  const fetchMaterials = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/materials');
-      const data = await response.json();
-      if (response.ok) {
-        setMaterials(data.materials);
-        // Get recent 3 materials
-        setRecentMaterials(data.materials.slice(0, 3));
-      }
-    } catch (error) {
-      console.error('Error fetching materials:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (status === 'loading') {
     return (
@@ -137,7 +118,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xl font-bold text-gray-900">
-                      {materials.filter((m) => m.summary).length}
+                      {materials.filter((m: any) => m.summary).length}
                     </p>
                     <p className="text-xs text-gray-600 font-medium">{t('dashboard.processed')}</p>
                   </div>
@@ -150,7 +131,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xl font-bold text-gray-900">
-                      {materials.reduce((acc, m) => acc + (m.flashcards?.length || 0), 0)}
+                      {materials.reduce((acc: number, m: any) => acc + (m.flashcards?.length || 0), 0)}
                     </p>
                     <p className="text-xs text-gray-600 font-medium">{t('dashboard.flashcards')}</p>
                   </div>
@@ -171,7 +152,7 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 <div className="grid md:grid-cols-3 gap-3">
-                  {recentMaterials.map((material) => (
+                  {recentMaterials.map((material: any) => (
                     <Link
                       key={material.id}
                       href="/dashboard/materials"

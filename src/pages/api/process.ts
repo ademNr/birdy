@@ -8,7 +8,11 @@ import StudyMaterial from '../../../models/StudyMaterial';
 import { extractTextFromFile } from '../../../lib/fileProcessor';
 import { processStudyMaterial, detectChapterOrder, extractChapterTitle } from '../../../lib/gemini';
 import { detectMaterialName } from '../../../lib/materialNameDetector';
-import fs from 'fs/promises';
+
+// Configure timeout for Vercel
+export const config = {
+  maxDuration: 300, // 300 seconds (5 minutes) for Vercel Pro
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -64,31 +68,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.warn(`Found ${documents.length} documents but expected ${documentIds.length}`);
         }
 
-        // Extract text from all documents
-        const extractedTexts = [];
+        // Use stored extracted text from database (extracted during upload)
+        // This is necessary for Vercel compatibility where files are ephemeral
+        const extractedTexts: string[] = [];
         for (const doc of documents) {
             try {
-                if (!doc.filePath) {
-                    throw new Error(`File path is missing for document ${doc.originalName}`);
+                // Use stored extracted text if available
+                if (doc.extractedText && doc.extractedText.trim().length > 0) {
+                    extractedTexts.push(doc.extractedText);
+                    console.log(`Using stored text for ${doc.originalName} (${doc.extractedText.length} characters)`);
+                } else {
+                    // Fallback: try to extract from file if stored text is not available
+                    // This works locally but may fail on Vercel
+                    if (doc.filePath) {
+                        try {
+                            const text = await extractTextFromFile(doc.filePath, doc.fileType);
+                            if (text && text.trim().length > 0) {
+                                extractedTexts.push(text);
+                                // Update document with extracted text
+                                doc.extractedText = text;
+                                await doc.save();
+                                console.log(`Extracted text from file for ${doc.originalName}`);
+                            } else {
+                                throw new Error('No text extracted from file');
+                            }
+                        } catch (fileError) {
+                            console.error(`Error extracting from file ${doc.originalName}:`, fileError);
+                            throw new Error(`No extracted text available for ${doc.originalName}. Please re-upload the file.`);
+                        }
+                    } else {
+                        throw new Error(`No extracted text or file path available for ${doc.originalName}`);
+                    }
                 }
-
-                const text = await extractTextFromFile(doc.filePath, doc.fileType);
-
-                if (!text || text.trim().length === 0) {
-                    console.warn(`No text extracted from ${doc.originalName}`);
-                }
-
-                extractedTexts.push(text);
-
-                // Update document with extracted text (store FULL text for document viewer)
-                // Ensure we store the complete text, not truncated
-                doc.extractedText = text;
-                await doc.save();
             } catch (error: unknown) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error(`Error extracting text from ${doc.fileName}:`, error);
+                console.error(`Error getting text for ${doc.originalName}:`, error);
                 return res.status(500).json({
-                    error: `Failed to extract text from ${doc.originalName}: ${errorMessage}`
+                    error: `Failed to get text from ${doc.originalName}: ${errorMessage}`
                 });
             }
         }
@@ -164,15 +180,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        // Process each chapter separately
-        const chapters = [];
-        for (const info of chapterInfo) {
+        // Process each chapter separately in parallel for better performance
+        const chapterPromises = chapterInfo.map(async (info) => {
             const chapterText = extractedTexts[info.fileIndex];
-            if (!chapterText || chapterText.trim().length === 0) continue;
+            if (!chapterText || chapterText.trim().length === 0) {
+                return {
+                    order: info.order,
+                    title: info.title,
+                    documentId: documents[info.fileIndex]._id,
+                };
+            }
 
             try {
                 const chapterResponse = await processStudyMaterial(chapterText, features, selectedLanguage);
-                chapters.push({
+                return {
                     order: info.order,
                     title: info.title,
                     documentId: documents[info.fileIndex]._id,
@@ -183,17 +204,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     mcqs: chapterResponse.mcqs,
                     flashcards: chapterResponse.flashcards,
                     youtubeVideos: chapterResponse.youtubeVideos,
-                });
+                };
             } catch (error) {
                 console.error(`Error processing chapter ${info.order} (${info.title}):`, error);
-                // Continue with other chapters even if one fails
-                chapters.push({
+                // Return minimal chapter data if processing fails
+                return {
                     order: info.order,
                     title: info.title,
                     documentId: documents[info.fileIndex]._id,
-                });
+                };
             }
-        }
+        });
+
+        // Wait for all chapters to process in parallel
+        const chapters = await Promise.all(chapterPromises);
+        // Sort chapters by order
+        chapters.sort((a, b) => a.order - b.order);
 
         // Create study material
         let studyMaterial;
@@ -237,31 +263,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Don't fail the request if this fails
         }
 
-        // Delete physical files from uploads folder after successful processing
-        // This helps with memory management since the text is already extracted and saved
-        try {
-            for (const doc of documents) {
-                if (doc.filePath) {
-                    try {
-                        // Check if file exists before attempting to delete
-                        await fs.access(doc.filePath);
-                        await fs.unlink(doc.filePath);
-                        console.log(`Successfully deleted file: ${doc.filePath}`);
-                    } catch (fileError: unknown) {
-                        // File might not exist or already deleted - log but don't fail
-                        const error = fileError as NodeJS.ErrnoException;
-                        if (error.code === 'ENOENT') {
-                            console.log(`File already deleted or not found: ${doc.filePath}`);
-                        } else {
-                            console.error(`Error deleting file ${doc.filePath}:`, fileError);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            // Log error but don't fail the request since data is already saved
-            console.error('Error deleting uploaded files:', error);
-        }
+        // Note: On Vercel, files in /tmp are automatically cleaned up
+        // No need to manually delete files
 
         return res.status(200).json({
             message: 'Study material processed successfully',
