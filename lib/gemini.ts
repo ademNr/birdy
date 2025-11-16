@@ -171,7 +171,7 @@ function buildPrompt(text: string, features: any, outputLanguage: 'english' | 'f
   // Use the selected output language
   const language = outputLanguage === 'french' ? 'French' : outputLanguage === 'arabic' ? 'Arabic' : 'English';
 
-  let prompt = `You are an AI Study Assistant for Tunisian students. Analyze the following study material THOROUGHLY and provide a comprehensive, DETAILED JSON response.
+  let prompt = `You are an AI Study Assistant. Analyze the following study material THOROUGHLY and provide a comprehensive, DETAILED JSON response.
 
 IMPORTANT: 
 - You MUST respond in ${language}. All summaries, key points, questions, and explanations must be in ${language}.
