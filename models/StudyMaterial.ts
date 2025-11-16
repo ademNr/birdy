@@ -69,10 +69,11 @@ export interface IStudyMaterial extends Document {
       category?: string;
     }>;
     youtubeVideos?: Array<{
+      videoId?: string; // YouTube video ID extracted from URL
+      videoUrl: string; // Direct YouTube video URL
       title: string;
       description: string;
-      searchQuery: string;
-      relevance: string;
+      relevance: string; // Why this video is relevant
     }>;
   }>;
   createdAt: Date;
@@ -201,9 +202,10 @@ const StudyMaterialSchema: Schema = new Schema(
         category: String,
       }],
       youtubeVideos: [{
+        videoId: String,
+        videoUrl: String,
         title: String,
         description: String,
-        searchQuery: String,
         relevance: String,
       }],
     }],

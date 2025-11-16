@@ -591,38 +591,100 @@ export default function StudyMaterialView({ material, onMaterialUpdate, isOwner 
                       Suggested YouTube videos to help you understand and revise the main topics in this chapter.
                     </p>
                     <div className="grid md:grid-cols-2 gap-4">
-                      {currentContent.youtubeVideos.map((video: any, index: number) => (
-                        <div key={index} className="border-2 border-gray-200 rounded-lg p-4 bg-white hover:border-gray-400 hover:shadow-md transition-all">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0">
-                              <div className="w-24 h-16 bg-red-600 rounded-lg flex items-center justify-center shadow-md">
-                                <span className="text-white text-2xl">▶</span>
+                      {currentContent.youtubeVideos.map((video: any, index: number) => {
+                        // Extract video ID from URL if not already present
+                        let videoId = video.videoId;
+                        if (!videoId && video.videoUrl) {
+                          const patterns = [
+                            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+                            /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
+                          ];
+                          for (const pattern of patterns) {
+                            const match = video.videoUrl.match(pattern);
+                            if (match) {
+                              videoId = match[1];
+                              break;
+                            }
+                          }
+                        }
+                        
+                        return (
+                          <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden bg-white hover:border-gray-400 hover:shadow-lg transition-all">
+                            {videoId ? (
+                              // Embedded YouTube video
+                              <div className="w-full">
+                                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}> {/* 16:9 aspect ratio */}
+                                  <iframe
+                                    className="absolute top-0 left-0 w-full h-full"
+                                    src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                                    title={video.title || 'YouTube video'}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    loading="lazy"
+                                  />
+                                </div>
+                                <div className="p-4">
+                                  <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2">
+                                    {video.title || 'Video'}
+                                  </h4>
+                                  {video.description && (
+                                    <p className="text-xs text-gray-700 mb-2 line-clamp-2">
+                                      {video.description}
+                                    </p>
+                                  )}
+                                  {video.relevance && (
+                                    <p className="text-xs text-gray-600">
+                                      <span className="font-semibold">Why relevant:</span> {video.relevance}
+                                    </p>
+                                  )}
+                                  {video.videoUrl && (
+                                    <a
+                                      href={video.videoUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-red-600 hover:text-red-700 mt-2 inline-block"
+                                    >
+                                      Watch on YouTube ↗
+                                    </a>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2">
-                                {video.title || 'Video Suggestion'}
-                              </h4>
-                              <p className="text-xs text-gray-700 mb-2 line-clamp-2">
-                                {video.description || 'Educational video for this topic'}
-                              </p>
-                              <p className="text-xs text-gray-600 mb-3">
-                                <span className="font-semibold">Why relevant:</span> {video.relevance || 'Covers key concepts from this chapter'}
-                              </p>
-                              <a
-                                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(video.searchQuery || video.title || '')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md transition-colors shadow-sm"
-                              >
-                                <span>🔍</span>
-                                <span>Search on YouTube</span>
-                                <span>↗</span>
-                              </a>
-                            </div>
+                            ) : video.videoUrl ? (
+                              // Fallback: Show link if we have URL but no ID
+                              <div className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-shrink-0">
+                                    <div className="w-24 h-16 bg-red-600 rounded-lg flex items-center justify-center shadow-md">
+                                      <span className="text-white text-2xl">▶</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-bold text-gray-900 mb-1.5 line-clamp-2">
+                                      {video.title || 'Video'}
+                                    </h4>
+                                    <p className="text-xs text-gray-700 mb-2 line-clamp-2">
+                                      {video.description || 'Educational video for this topic'}
+                                    </p>
+                                    <p className="text-xs text-gray-600 mb-3">
+                                      <span className="font-semibold">Why relevant:</span> {video.relevance || 'Covers key concepts from this chapter'}
+                                    </p>
+                                    <a
+                                      href={video.videoUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md transition-colors shadow-sm"
+                                    >
+                                      <span>▶</span>
+                                      <span>Watch on YouTube</span>
+                                      <span>↗</span>
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (

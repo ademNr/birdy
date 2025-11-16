@@ -8,6 +8,7 @@ import StudyMaterial from '../../../models/StudyMaterial';
 import { extractTextFromFile } from '../../../lib/fileProcessor';
 import { processStudyMaterial, detectChapterOrder, extractChapterTitle } from '../../../lib/gemini';
 import { detectMaterialName } from '../../../lib/materialNameDetector';
+import { searchYouTubeVideos } from '../../../lib/youtubeSearch';
 
 // Configure timeout for Vercel
 export const config = {
@@ -193,6 +194,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             try {
                 const chapterResponse = await processStudyMaterial(chapterText, features, selectedLanguage);
+                
+                // Fetch real YouTube videos from search queries
+                let fetchedVideos: any[] = [];
+                if (chapterResponse.youtubeVideos && chapterResponse.youtubeVideos.length > 0) {
+                    try {
+                        // Fetch videos for each search query (limit to first 10 to avoid too many requests)
+                        const videoPromises = chapterResponse.youtubeVideos.slice(0, 10).map(async (video: any) => {
+                            if (!video.searchQuery) return null;
+                            
+                            try {
+                                // Search YouTube and get real video URLs
+                                const searchResults = await searchYouTubeVideos(video.searchQuery, 1); // Get 1 video per query
+                                if (searchResults.length > 0) {
+                                    const foundVideo = searchResults[0];
+                                    return {
+                                        videoId: foundVideo.videoId,
+                                        videoUrl: foundVideo.videoUrl,
+                                        title: foundVideo.title || video.title,
+                                        description: foundVideo.description || video.description,
+                                        relevance: video.relevance || 'Educational video for this topic',
+                                    };
+                                }
+                            } catch (error) {
+                                console.error(`Error fetching video for query "${video.searchQuery}":`, error);
+                            }
+                            
+                            // Fallback: return original video data if search fails
+                            return {
+                                title: video.title || 'Video',
+                                description: video.description || '',
+                                relevance: video.relevance || 'Educational video for this topic',
+                                searchQuery: video.searchQuery,
+                            };
+                        });
+
+                        fetchedVideos = (await Promise.all(videoPromises)).filter((v: any) => v !== null);
+                    } catch (error) {
+                        console.error('Error fetching YouTube videos:', error);
+                        // Fallback to original video data
+                        fetchedVideos = chapterResponse.youtubeVideos.map((v: any) => ({
+                            title: v.title || 'Video',
+                            description: v.description || '',
+                            relevance: v.relevance || 'Educational video for this topic',
+                            searchQuery: v.searchQuery,
+                        }));
+                    }
+                }
+
                 return {
                     order: info.order,
                     title: info.title,
@@ -203,7 +252,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     examQuestions: chapterResponse.examQuestions,
                     mcqs: chapterResponse.mcqs,
                     flashcards: chapterResponse.flashcards,
-                    youtubeVideos: chapterResponse.youtubeVideos,
+                    youtubeVideos: fetchedVideos.length > 0 ? fetchedVideos : chapterResponse.youtubeVideos,
                 };
             } catch (error) {
                 console.error(`Error processing chapter ${info.order} (${info.title}):`, error);
@@ -283,15 +332,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
         });
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-        const errorStack = error instanceof Error ? error.stack : undefined;
-        console.error('Process error:', error);
-        if (errorStack) {
-            console.error('Error stack:', errorStack);
+        let errorMessage = 'Internal server error';
+        let errorStack: string | undefined;
+        let errorDetails: any = {};
+        
+        if (error instanceof Error) {
+            errorMessage = error.message || errorMessage;
+            errorStack = error.stack;
+            errorDetails = {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+            };
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error && typeof error === 'object') {
+            try {
+                errorDetails = JSON.parse(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+                errorMessage = (error as any).message || (error as any).error || errorMessage;
+            } catch (e) {
+                errorDetails = { raw: String(error) };
+            }
         }
+        
+        console.error('Process error:', {
+            errorMessage,
+            errorType: typeof error,
+            errorConstructor: error?.constructor?.name,
+            errorDetails,
+            stack: errorStack,
+        });
+        
         return res.status(500).json({
             error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+            details: process.env.NODE_ENV === 'development' ? {
+                stack: errorStack,
+                ...errorDetails
+            } : undefined
         });
     }
 }
