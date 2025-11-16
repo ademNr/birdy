@@ -7,10 +7,24 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // Get Gemini model - using gemini-2.5-flash
+// IMPORTANT: The same model is used for ALL languages (English, French, Arabic)
+// Only the prompt content changes based on outputLanguage, not the model itself
 export function getGeminiModel() {
-  // Use gemini-2.5-flash as specified
-  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  return genAI.getGenerativeModel({ model: modelName });
+  // Use gemini-2.5-flash as requested
+  // Used consistently for English, French, and Arabic generation
+  const modelName = 'gemini-2.5-flash';
+
+  console.log('[Gemini] Getting model with name:', modelName);
+  console.log('[Gemini] API Key exists:', !!process.env.GEMINI_API_KEY);
+
+  try {
+    const model = genAI.getGenerativeModel({ model: modelName });
+    console.log('[Gemini] Model created successfully');
+    return model;
+  } catch (error) {
+    console.error('[Gemini] Error creating model:', error);
+    throw error;
+  }
 }
 
 export interface AIResponse {
@@ -79,28 +93,30 @@ export async function processStudyMaterial(
   // Limit text length to avoid token limits (Gemini has context limits)
   // Using a large limit to ensure we capture as much content as possible
   const maxTextLength = 2000000; // ~2M characters for comprehensive analysis
-  const truncatedText = text.length > maxTextLength 
+  const truncatedText = text.length > maxTextLength
     ? text.substring(0, maxTextLength) + '\n\n[Content truncated due to length - analyzing first 2M characters...]'
     : text;
 
   const prompt = buildPrompt(truncatedText, features, outputLanguage);
-  
+
   try {
     const model = getGeminiModel();
+    console.log('[Gemini] Calling generateContent with model...');
     const result = await model.generateContent(prompt);
+    console.log('[Gemini] generateContent completed successfully');
     const response = await result.response;
     const textResponse = response.text();
-    
+
     if (!textResponse || textResponse.trim().length === 0) {
       throw new Error('Empty response from AI');
     }
-    
+
     // Parse JSON response
     let jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/);
     if (!jsonMatch) {
       jsonMatch = textResponse.match(/\{[\s\S]*\}/);
     }
-    
+
     if (jsonMatch) {
       const jsonStr = jsonMatch[1] || jsonMatch[0];
       try {
@@ -111,7 +127,7 @@ export async function processStudyMaterial(
         throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
       }
     }
-    
+
     // Fallback: try to parse the entire response as JSON
     try {
       return JSON.parse(textResponse);
@@ -122,21 +138,32 @@ export async function processStudyMaterial(
     }
   } catch (error: unknown) {
     console.error('Error processing with Gemini:', error);
-    
+
     if (error instanceof Error) {
+      // Log the full error for debugging
+      console.error('Full error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        error: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      });
+
       // Check for specific error types
-      if (error.message.includes('API_KEY')) {
+      if (error.message.includes('API_KEY') || error.message.includes('api key')) {
         throw new Error('Invalid or missing GEMINI_API_KEY. Please check your .env.local file.');
       }
       if (error.message.includes('quota') || error.message.includes('rate limit')) {
         throw new Error('API quota exceeded or rate limited. Please try again later.');
       }
-      if (error.message.includes('model')) {
-        throw new Error('Invalid model name. Please check the Gemini API documentation.');
+      if (error.message.includes('model') || error.message.includes('Model') || error.message.includes('400')) {
+        console.error('Model error - attempted model name: gemini-2.5-flash');
+        console.error('Full error message:', error.message);
+        // Check if it's a 400 error which often indicates invalid model name
+        throw new Error(`Invalid model name: gemini-2.5-flash. Error: ${error.message}. Please check the Gemini API documentation for valid model names.`);
       }
       throw new Error(`AI processing failed: ${error.message}`);
     }
-    
+
     throw new Error('Failed to process study material with AI. Please check your GEMINI_API_KEY and try again.');
   }
 }
@@ -144,7 +171,7 @@ export async function processStudyMaterial(
 function buildPrompt(text: string, features: any, outputLanguage: 'english' | 'french' | 'arabic' = 'english'): string {
   // Use the selected output language
   const language = outputLanguage === 'french' ? 'French' : outputLanguage === 'arabic' ? 'Arabic' : 'English';
-  
+
   let prompt = `You are an AI Study Assistant for Tunisian students. Analyze the following study material THOROUGHLY and provide a comprehensive, DETAILED JSON response.
 
 IMPORTANT: 
@@ -274,7 +301,7 @@ IMPORTANT:
 
 export async function detectChapterOrder(texts: string[], fileNames: string[]): Promise<Array<{ order: number; title: string; content: string; fileIndex: number }>> {
   const combinedText = texts.map((t, i) => `---FILE ${i + 1}: ${fileNames[i]}---\n${t.substring(0, 2000)}`).join('\n\n');
-  
+
   const prompt = `Analyze these study materials and determine their chapter order, titles, and organization. Each file represents a chapter.
 
 FILES:
@@ -303,10 +330,10 @@ Return ONLY valid JSON array.`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const textResponse = response.text();
-    
-    const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/) || 
-                     textResponse.match(/\[[\s\S]*\]/);
-    
+
+    const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/) ||
+      textResponse.match(/\[[\s\S]*\]/);
+
     if (jsonMatch) {
       const jsonStr = jsonMatch[1] || jsonMatch[0];
       const parsed = JSON.parse(jsonStr);
@@ -316,7 +343,7 @@ Return ONLY valid JSON array.`;
         fileIndex: ch.fileIndex !== undefined ? ch.fileIndex : i,
       }));
     }
-    
+
     const parsed = JSON.parse(textResponse);
     return parsed.map((ch: any, i: number) => ({
       ...ch,
@@ -329,7 +356,7 @@ Return ONLY valid JSON array.`;
       // Try to extract title from filename
       const fileName = fileNames[i] || `File ${i + 1}`;
       const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ').trim();
-      
+
       return {
         order: i + 1,
         title: nameWithoutExt || `Chapter ${i + 1}`,
@@ -343,7 +370,7 @@ Return ONLY valid JSON array.`;
 export async function extractChapterTitle(text: string, fileName: string, outputLanguage: 'english' | 'french' | 'arabic' = 'english'): Promise<string> {
   const language = outputLanguage === 'french' ? 'French' : outputLanguage === 'arabic' ? 'Arabic' : 'English';
   const textPreview = text.substring(0, 3000);
-  
+
   const prompt = `Extract the chapter title from this study material. Look for:
 - Chapter headings (Chapter 1, Chapter 2, etc.)
 - Title pages
@@ -360,18 +387,18 @@ Return ONLY the chapter title (3-10 words maximum), no explanations, no quotes, 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const title = response.text().trim();
-    
+
     // Clean up the title
     const cleanTitle = title
       .replace(/^["']|["']$/g, '')
       .replace(/\n/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    
+
     if (cleanTitle && cleanTitle.length > 3 && cleanTitle.length < 150) {
       return cleanTitle;
     }
-    
+
     // Fallback: use filename
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ').trim();
     return nameWithoutExt || 'Untitled Chapter';
