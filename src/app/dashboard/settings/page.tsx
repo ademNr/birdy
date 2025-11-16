@@ -27,10 +27,17 @@ export default function SettingsPage() {
   const fetchMaterialsCount = async () => {
     try {
       const response = await fetch('/api/materials');
-      if (response.ok) {
-        const data = await response.json();
-        setMaterialsCount(data.materials?.length || 0);
+      if (!response.ok) {
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setMaterialsCount(data.materials?.length || 0);
     } catch (error) {
       console.error('Error fetching materials count:', error);
     }

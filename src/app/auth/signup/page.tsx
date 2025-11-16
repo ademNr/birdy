@@ -40,11 +40,26 @@ export default function SignUpPage() {
         body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        setError(data.error || 'Registration failed');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch {
+          errorData = { error: response.statusText || 'Registration failed' };
+        }
+        setError(errorData.error || 'Registration failed');
       } else {
+        const text = await response.text();
+        // Registration might return empty response, which is OK
+        if (text) {
+          try {
+            const data = JSON.parse(text);
+            // Handle data if needed
+          } catch {
+            // Ignore parse errors for empty or non-JSON responses
+          }
+        }
         setSuccess(true);
         setTimeout(() => {
           router.push('/auth/signin?registered=true');
