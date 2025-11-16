@@ -221,9 +221,10 @@ if (process.env.NODE_ENV === 'development') {
   if (mongoose.models.StudyMaterial) {
     delete mongoose.models.StudyMaterial;
   }
-  // Also delete from mongoose.modelSchemas if it exists
-  if (mongoose.modelSchemas && mongoose.modelSchemas['StudyMaterial']) {
-    delete mongoose.modelSchemas['StudyMaterial'];
+  // Also delete from mongoose.modelSchemas if it exists (using type assertion for TypeScript)
+  const mongooseAny = mongoose as any;
+  if (mongooseAny.modelSchemas && mongooseAny.modelSchemas['StudyMaterial']) {
+    delete mongooseAny.modelSchemas['StudyMaterial'];
   }
 }
 
