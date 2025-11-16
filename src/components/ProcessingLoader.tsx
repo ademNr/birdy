@@ -28,17 +28,25 @@ export default function ProcessingLoader({ isProcessing, progress, documentIds, 
     const fetchStatus = async () => {
       try {
         const response = await fetch(`/api/documents/extract-status?documentIds=${documentIds.join(',')}`);
-        if (response.ok) {
-          const data = await response.json();
-          setDocumentStatuses(data.documents || []);
-          
-          // Update current file index based on which files have text
-          const firstUnprocessedIndex = data.documents.findIndex((d: DocumentStatus) => !d.extractedText || d.extractedText.length === 0);
-          if (firstUnprocessedIndex >= 0) {
-            setCurrentFileIndex(firstUnprocessedIndex);
-          } else if (data.documents.length > 0) {
-            setCurrentFileIndex(data.documents.length);
-          }
+        if (!response.ok) {
+          return;
+        }
+        
+        const text = await response.text();
+        if (!text) {
+          return;
+        }
+
+        const data = JSON.parse(text);
+        setDocumentStatuses(data.documents || []);
+        
+        // Update current file index based on which files have text
+        const documents = data.documents || [];
+        const firstUnprocessedIndex = documents.findIndex((d: DocumentStatus) => !d.extractedText || d.extractedText.length === 0);
+        if (firstUnprocessedIndex >= 0) {
+          setCurrentFileIndex(firstUnprocessedIndex);
+        } else if (documents.length > 0) {
+          setCurrentFileIndex(documents.length);
         }
       } catch (error) {
         console.error('Error fetching document status:', error);

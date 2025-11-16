@@ -29,16 +29,23 @@ export default function ShareModal({ materialId, materialTitle, isOpen, onClose,
   const fetchSuggestions = useCallback(async (query: string) => {
     try {
       const response = await fetch(`/api/users/suggestions?query=${encodeURIComponent(query)}`);
-      const data = await response.json();
-      if (response.ok) {
-        // Filter out already selected users
-        const selectedEmails = selectedUsers.map(u => u.email.toLowerCase());
-        const filtered = (data.suggestions || []).filter(
-          (s: { email: string }) => !selectedEmails.includes(s.email.toLowerCase())
-        );
-        setSuggestions(filtered);
-        setShowSuggestions(filtered.length > 0 && query.length >= 2);
+      if (!response.ok) {
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        return;
+      }
+
+      const data = JSON.parse(text);
+      // Filter out already selected users
+      const selectedEmails = selectedUsers.map(u => u.email.toLowerCase());
+      const filtered = (data.suggestions || []).filter(
+        (s: { email: string }) => !selectedEmails.includes(s.email.toLowerCase())
+      );
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0 && query.length >= 2);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
     }
@@ -126,11 +133,26 @@ export default function ShareModal({ materialId, materialTitle, isOpen, onClose,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to share material');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch {
+          errorData = { error: response.statusText || 'Failed to share material' };
+        }
+        throw new Error(errorData.error || 'Failed to share material');
       }
+
+      const text = await response.text();
+      if (!text) {
+        // Share might return empty response, which is OK
+        setSuccess('Material shared successfully!');
+        onClose();
+        return;
+      }
+
+      const data = JSON.parse(text);
 
       setSuccess(`Material shared successfully with ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}!`);
       

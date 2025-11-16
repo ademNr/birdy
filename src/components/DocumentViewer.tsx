@@ -31,10 +31,19 @@ export default function DocumentViewer({ materialId, chapters = [] }: DocumentVi
     try {
       setLoading(true);
       const response = await fetch(`/api/materials/documents?materialId=${materialId}`);
-      const data = await response.json();
-      if (response.ok) {
-        setDocuments(data.documents);
+      if (!response.ok) {
+        console.error('Error fetching documents:', response.statusText);
+        return;
       }
+      
+      const text = await response.text();
+      if (!text) {
+        console.error('Error fetching documents: Empty response');
+        return;
+      }
+
+      const data = JSON.parse(text);
+      setDocuments(data.documents || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
