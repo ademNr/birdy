@@ -8,9 +8,20 @@ import connectDB from '../../../lib/mongodb';
 import Document from '../../../models/Document';
 import { isFileSupported } from '../../../lib/fileProcessor';
 
+// Use /tmp directory for Vercel (writable in serverless functions)
+// Fallback to 'uploads/' for local development
+const getUploadDir = () => {
+  // On Vercel, use /tmp which is writable
+  if (process.env.VERCEL) {
+    return '/tmp';
+  }
+  // For local development, use uploads directory
+  return path.join(process.cwd(), 'uploads');
+};
+
 // Configure multer for file upload
 const upload = multer({
-  dest: 'uploads/',
+  dest: getUploadDir(),
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB
   },
@@ -64,12 +75,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectDB();
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    try {
-      await fs.access(uploadsDir);
-    } catch {
-      await fs.mkdir(uploadsDir, { recursive: true });
+    // Get the appropriate upload directory (tmp for Vercel, uploads for local)
+    const uploadsDir = getUploadDir();
+    
+    // Create uploads directory if it doesn't exist (only for local development)
+    if (!process.env.VERCEL) {
+      try {
+        await fs.access(uploadsDir);
+      } catch {
+        await fs.mkdir(uploadsDir, { recursive: true });
+      }
     }
 
     // Handle file upload
@@ -88,7 +103,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExtension}`;
       const filePath = path.join(uploadsDir, fileName);
 
-      // Move file to permanent location
+      // Move file to permanent location (or keep in tmp for Vercel)
+      // On Vercel, files in /tmp persist during the function execution
       await fs.rename(file.path, filePath);
 
       // Save document to database
