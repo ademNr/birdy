@@ -215,6 +215,11 @@ const StudyMaterialSchema: Schema = new Schema(
   }
 );
 
+// Add indexes for faster queries
+StudyMaterialSchema.index({ userId: 1, createdAt: -1 });
+StudyMaterialSchema.index({ sharedWith: 1, createdAt: -1 });
+StudyMaterialSchema.index({ createdAt: -1 });
+
 // Force clear the model cache in development to ensure schema updates are applied
 // This is necessary because Mongoose caches models and schema changes won't take effect until cache is cleared
 if (process.env.NODE_ENV === 'development') {

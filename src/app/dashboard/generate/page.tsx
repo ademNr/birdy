@@ -9,6 +9,7 @@ import StudyMaterialView from '../../../components/StudyMaterialView';
 import ProcessingLoader from '../../../components/ProcessingLoader';
 import { useUpload } from '../../../contexts/UploadContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { useMaterials } from '../../../../lib/hooks/useMaterials';
 
 interface Document {
   id: string;
@@ -48,32 +49,14 @@ export default function GeneratePage() {
     }
   }, [status, router]);
 
+  // Use SWR for materials (already cached)
+  const { materials: cachedMaterials, mutate: mutateMaterials } = useMaterials();
+  
   useEffect(() => {
-    if (session) {
-      fetchMaterials();
+    if (cachedMaterials.length > 0) {
+      setMaterials(cachedMaterials);
     }
-  }, [session]);
-
-  const fetchMaterials = async () => {
-    try {
-      const response = await fetch('/api/materials');
-      if (!response.ok) {
-        console.error('Error fetching materials:', response.statusText);
-        return;
-      }
-      
-      const text = await response.text();
-      if (!text) {
-        console.error('Error fetching materials: Empty response');
-        return;
-      }
-
-      const data = JSON.parse(text);
-      setMaterials(data.materials || []);
-    } catch (error) {
-      console.error('Error fetching materials:', error);
-    }
-  };
+  }, [cachedMaterials]);
 
   const handleUploadComplete = (uploadedDocs: Document[]) => {
     setDocuments((prev) => {
@@ -137,31 +120,51 @@ export default function GeneratePage() {
         }),
       })
         .then(async (response) => {
+          // Check response status first
           if (!response.ok) {
-            const errorText = await response.text();
-            let errorData;
+            let errorMessage = 'Processing failed';
             try {
-              errorData = errorText ? JSON.parse(errorText) : {};
-            } catch {
-              errorData = { error: response.statusText || 'Processing failed' };
+              const text = await response.text();
+              if (text) {
+                try {
+                  const data = JSON.parse(text);
+                  errorMessage = data.error || data.message || `Server error: ${response.status} ${response.statusText}`;
+                } catch {
+                  errorMessage = text || `Server error: ${response.status} ${response.statusText}`;
+                }
+              } else {
+                errorMessage = `Server error: ${response.status} ${response.statusText}. This might be a timeout - processing may take a while.`;
+              }
+            } catch (parseError) {
+              errorMessage = `Server error: ${response.status} ${response.statusText}. This might be a timeout - processing may take a while.`;
             }
-            const errorMessage = errorData.error || 'Processing failed';
-            console.error('Processing error:', errorMessage, errorData);
+            
+            console.error('Processing error:', {
+              message: errorMessage,
+              status: response.status,
+              statusText: response.statusText,
+            });
             alert(`Error: ${errorMessage}`);
             setProcessing(false);
             setProcessingProgress('');
             return;
           }
 
-          const text = await response.text();
-          if (!text) {
-            alert('Error: Empty response from server');
+          // Parse JSON response for successful responses
+          let data;
+          try {
+            const text = await response.text();
+            if (!text) {
+              throw new Error('Empty response from server');
+            }
+            data = JSON.parse(text);
+          } catch (parseError) {
+            console.error('Failed to parse response:', parseError);
+            alert('Error: Invalid response from server. Please try again.');
             setProcessing(false);
             setProcessingProgress('');
             return;
           }
-
-          const data = JSON.parse(text);
 
           setProcessingProgress('Complete!');
           setStudyMaterial(data.studyMaterial);
@@ -169,7 +172,9 @@ export default function GeneratePage() {
           setMaterialTitle('');
           
           reset(); // Reset upload state
-          fetchMaterials();
+          
+          // Refresh materials cache
+          mutateMaterials();
           
           // Small delay then redirect
           setTimeout(() => {
@@ -180,7 +185,13 @@ export default function GeneratePage() {
         })
         .catch((error) => {
           console.error('Processing error:', error);
-          alert(error.message || 'Processing failed. Please check the console for details.');
+          const errorMessage = error.message || error.toString() || 'Network error. Please check your connection and try again.';
+          console.error('Full error details:', {
+            message: errorMessage,
+            error: error,
+            stack: error.stack
+          });
+          alert(`Error: ${errorMessage}`);
           setProcessing(false);
           setProcessingProgress('');
         });

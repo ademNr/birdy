@@ -25,13 +25,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Convert userId to ObjectId for MongoDB query
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
+    // Use lean() for faster queries and add indexes hint
     const materials = await StudyMaterial.find({
       $or: [
         { userId: userObjectId },
         { sharedWith: userObjectId },
       ],
     })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean() // Faster queries, returns plain objects
+      .limit(100); // Limit results for performance
 
     // Fetch document details separately to avoid populate issues
     const allDocumentIds = materials.flatMap((m) => m.documentIds || []);
@@ -39,12 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (allDocumentIds.length > 0) {
       const documents = await Document.find({
         _id: { $in: allDocumentIds },
-      }).select('_id originalName fileType');
+      })
+        .select('_id originalName fileType filePath')
+        .lean(); // Faster queries
       documents.forEach((doc) => {
         documentsMap.set(String(doc._id), {
           id: String(doc._id),
           originalName: doc.originalName,
           fileType: doc.fileType,
+          filePath: doc.filePath,
         });
       });
     }
@@ -57,6 +63,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const usersMap = new Map(users.map((u: any) => [String(u._id), { name: u.name, email: u.email }]));
 
+    // Set caching headers
+    res.setHeader('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=120');
+    
     return res.status(200).json({
       materials: materials.map((m) => {
         const materialUserId = m.userId.toString();

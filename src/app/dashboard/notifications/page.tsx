@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/Sidebar';
+import { useNotifications } from '../../../../lib/hooks/useNotifications';
+import { useMaterials } from '../../../../lib/hooks/useMaterials';
 
 interface Notification {
   id: string;
@@ -23,66 +25,15 @@ interface Notification {
 export default function NotificationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [materialsCount, setMaterialsCount] = useState(0);
+  const { notifications, isLoading, mutate } = useNotifications();
+  const { materials } = useMaterials();
+  const materialsCount = materials.length;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     }
   }, [status, router]);
-
-  useEffect(() => {
-    if (session) {
-      fetchNotifications();
-      fetchMaterialsCount();
-      // Refresh notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [session]);
-
-  const fetchMaterialsCount = async () => {
-    try {
-      const response = await fetch('/api/materials');
-      if (!response.ok) {
-        return;
-      }
-      
-      const text = await response.text();
-      if (!text) {
-        return;
-      }
-
-      const data = JSON.parse(text);
-      setMaterialsCount(data.materials?.length || 0);
-    } catch (error) {
-      console.error('Error fetching materials count:', error);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/notifications');
-      if (!response.ok) {
-        return;
-      }
-      
-      const text = await response.text();
-      if (!text) {
-        return;
-      }
-
-      const data = JSON.parse(text);
-      setNotifications(data.notifications || []);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -91,11 +42,15 @@ export default function NotificationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationId }),
       });
-
+      
+      // Optimistically update the cache
       if (response.ok) {
-        setNotifications(prev =>
-          prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-        );
+        mutate((current: Notification[]) => {
+          if (!current) return current;
+          return current.map((n) => 
+            n.id === notificationId ? { ...n, read: true } : n
+          );
+        }, false); // Don't revalidate immediately
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -103,12 +58,12 @@ export default function NotificationsPage() {
   };
 
   const markAllAsRead = async () => {
-    const unreadNotifications = notifications.filter(n => !n.read);
+    const unreadNotifications = notifications.filter((n: Notification) => !n.read);
     if (unreadNotifications.length === 0) return;
 
     try {
       await Promise.all(
-        unreadNotifications.map(n => markAsRead(n.id))
+        unreadNotifications.map((n: Notification) => markAsRead(n.id))
       );
     } catch (error) {
       console.error('Error marking all as read:', error);
@@ -131,7 +86,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
   if (status === 'loading' || isLoading) {
     return (
@@ -177,7 +132,7 @@ export default function NotificationsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {notifications.map((notification) => (
+                {notifications.map((notification: Notification) => (
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}

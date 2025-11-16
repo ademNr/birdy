@@ -61,6 +61,10 @@ const DocumentSchema: Schema = new Schema(
   }
 );
 
+// Add indexes for faster queries
+DocumentSchema.index({ userId: 1, createdAt: -1 });
+DocumentSchema.index({ processed: 1 });
+
 const DocumentModel: Model<IDocument> = mongoose.models.Document || mongoose.model<IDocument>('Document', DocumentSchema);
 
 export default DocumentModel;
