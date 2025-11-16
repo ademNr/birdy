@@ -156,7 +156,7 @@ const StudyMaterialSchema: Schema = new Schema(
     }],
     outputLanguage: {
       type: String,
-      enum: ['english', 'french'],
+      enum: ['english', 'french', 'arabic'],
       default: 'english',
     },
     chapters: [{
