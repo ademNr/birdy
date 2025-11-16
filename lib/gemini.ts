@@ -63,7 +63,6 @@ export interface AIResponse {
       topics: string[];
       difficulty: 'easy' | 'medium' | 'hard';
     }>;
-    examDate?: string;
     totalDays: number;
   };
   chapterInfo?: {
@@ -82,7 +81,7 @@ export async function processStudyMaterial(
     examQuestions?: boolean;
     mcqs?: boolean;
     flashcards?: boolean;
-    studyPlan?: { examDate?: string; difficulty?: string };
+    studyPlan?: { difficulty?: string };
   },
   outputLanguage: 'english' | 'french' | 'arabic' = 'english'
 ): Promise<AIResponse> {
@@ -275,7 +274,6 @@ NOTE: Suggest A LOT of YouTube videos (8-15 videos minimum) related to every imp
         "difficulty": "easy" | "medium" | "hard"
       }
     ],
-    "examDate": "${features.studyPlan.examDate || ''}",
     "totalDays": 7
   },
 `;

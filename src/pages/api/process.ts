@@ -235,11 +235,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 mcqs: overallResponse.mcqs,
                 flashcards: overallResponse.flashcards,
                 studyPlan: overallResponse.studyPlan ? {
-                    ...overallResponse.studyPlan,
                     schedule: overallResponse.studyPlan.schedule?.map((s: { date: string; topics: string[]; difficulty: string }) => ({
                         ...s,
                         date: new Date(s.date),
                     })) || [],
+                    totalDays: overallResponse.studyPlan.totalDays,
                 } : undefined,
                 outputLanguage: selectedLanguage,
                 chapters: chapters,

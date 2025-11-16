@@ -33,7 +33,6 @@ export interface IStudyMaterial extends Document {
       topics: string[];
       difficulty: 'easy' | 'medium' | 'hard';
     }>;
-    examDate?: Date;
     totalDays: number;
   };
   sharedWith: mongoose.Types.ObjectId[];
@@ -137,7 +136,6 @@ const StudyMaterialSchema: Schema = new Schema(
           enum: ['easy', 'medium', 'hard'],
         },
       }],
-      examDate: Date,
       totalDays: Number,
     },
     sharedWith: [{
